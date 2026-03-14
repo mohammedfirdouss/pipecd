@@ -56,7 +56,99 @@ type KubernetesApplicationSpec struct {
 	// The label will be configured to variant manifests used to distinguish them.
 	VariantLabel KubernetesVariantLabel `json:"variantLabel"`
 
-	// TODO: Define fields for KubernetesApplicationSpec.
+	// The service manifest used for variant service generation (canary/primary).
+	Service K8sResourceReference `json:"service"`
+}
+
+// K8sCanaryRolloutStageOptions contains all configurable values for a K8S_CANARY_ROLLOUT stage.
+type K8sCanaryRolloutStageOptions struct {
+	// How many pods for CANARY workloads.
+	// An integer value can be specified to indicate an absolute value of pod number.
+	// Or a string suffixed by "%" to indicate a percentage value compared to the pod number of PRIMARY.
+	// Default is 1 pod.
+	Replicas unit.Replicas `json:"replicas"`
+	// Suffix that should be used when naming the CANARY variant's resources.
+	// Default is "canary".
+	Suffix string `json:"suffix" default:"canary"`
+	// Whether the CANARY service should be created.
+	CreateService bool `json:"createService"`
+	// List of patches used to customize manifests for CANARY variant.
+	Patches []K8sResourcePatch `json:"patches,omitempty"`
+}
+
+func (o *K8sCanaryRolloutStageOptions) UnmarshalJSON(data []byte) error {
+	type alias K8sCanaryRolloutStageOptions
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*o = K8sCanaryRolloutStageOptions(a)
+	if err := defaults.Set(o); err != nil {
+		return err
+	}
+	return nil
+}
+
+// K8sPrimaryRolloutStageOptions contains all configurable values for a K8S_PRIMARY_ROLLOUT stage.
+type K8sPrimaryRolloutStageOptions struct {
+	// Suffix that should be used when naming the PRIMARY variant's resources.
+	// Default is "primary".
+	Suffix string `json:"suffix" default:"primary"`
+	// Whether the PRIMARY service should be created.
+	CreateService bool `json:"createService"`
+	// Whether the PRIMARY variant label should be added to manifests if they were missing.
+	AddVariantLabelToSelector bool `json:"addVariantLabelToSelector"`
+	// Whether the resources that are no longer defined in Git should be removed or not.
+	Prune bool `json:"prune"`
+}
+
+func (o *K8sPrimaryRolloutStageOptions) UnmarshalJSON(data []byte) error {
+	type alias K8sPrimaryRolloutStageOptions
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*o = K8sPrimaryRolloutStageOptions(a)
+	if err := defaults.Set(o); err != nil {
+		return err
+	}
+	return nil
+}
+
+// K8sResourcePatch represents a patch operation for a Kubernetes resource.
+type K8sResourcePatch struct {
+	// The target resource to be patched.
+	Target K8sResourcePatchTarget `json:"target"`
+	// List of patch operations to apply.
+	Ops []K8sResourcePatchOp `json:"ops"`
+}
+
+// K8sResourcePatchTarget represents the target of a patch operation for a Kubernetes resource.
+type K8sResourcePatchTarget struct {
+	// The kind of the target resource.
+	Kind string `json:"kind"`
+	// The name of the target resource.
+	Name string `json:"name"`
+	// The root document in the manifest to be patched (e.g. for helm, it might be "data.deployment.yaml").
+	DocumentRoot string `json:"documentRoot,omitempty"`
+}
+
+// K8sResourcePatchOpName represents the name of a patch operation for a Kubernetes resource.
+type K8sResourcePatchOpName string
+
+const (
+	// K8sResourcePatchOpYAMLReplace is the name of the patch operation that replaces the target with a new YAML document.
+	K8sResourcePatchOpYAMLReplace K8sResourcePatchOpName = "yaml-replace"
+)
+
+// K8sResourcePatchOp represents a patch operation for a Kubernetes resource.
+type K8sResourcePatchOp struct {
+	// The operation to apply.
+	Op K8sResourcePatchOpName `json:"op" default:"yaml-replace"`
+	// The path to the field to be patched.
+	Path string `json:"path"`
+	// The value to replace with.
+	Value string `json:"value"`
 }
 
 func (s *KubernetesApplicationSpec) UnmarshalJSON(data []byte) error {
