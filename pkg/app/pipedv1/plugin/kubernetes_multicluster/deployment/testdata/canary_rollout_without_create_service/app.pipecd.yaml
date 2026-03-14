@@ -1,17 +1,10 @@
 apiVersion: pipecd.dev/v1beta1
 kind: KubernetesApp
 spec:
-  name: canary-rollout
+  name: simple
   labels:
     env: example
     team: product
-  description: |
-    This app is test data for canary rollout without create service.
-  pipeline:
-    stages:
-      - name: K8S_CANARY_ROLLOUT
-        with:
-          replicas: 50%
   plugins:
     kubernetes_multicluster:
       input:
