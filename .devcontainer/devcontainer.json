@@ -34,5 +34,6 @@
 		}
 	},
 	"postCreateCommand": "go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest && curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64 && chmod +x /usr/local/bin/kind",
+	"postStartCommand": "chmod +x .devcontainer/start-port-forwards.sh && .devcontainer/start-port-forwards.sh",
 	"remoteUser": "root"
 }
