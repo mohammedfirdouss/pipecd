@@ -432,19 +432,38 @@ func findIstioVirtualServiceManifests(manifests []provider.Manifest, ref kubecon
 type virtualService struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Spec              istiov1.VirtualService
+	Spec              istiov1.VirtualService `json:"spec"`
 }
 
+// convertVirtualService converts the manifest into a virtualService.
+// It uses a JSON round-trip rather than runtime.DefaultUnstructuredConverter
+// because istiov1.VirtualService is a protobuf-generated type with its own
+// jsonpb-based MarshalJSON/UnmarshalJSON, which the generic unstructured
+// converter doesn't invoke and silently produces an empty Spec.
 func convertVirtualService(m provider.Manifest) (*virtualService, error) {
+	raw, err := m.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
 	var vs virtualService
-	if err := m.ConvertToStructuredObject(&vs); err != nil {
+	if err := json.Unmarshal(raw, &vs); err != nil {
 		return nil, err
 	}
 	return &vs, nil
 }
 
 func (vs *virtualService) toManifest() (provider.Manifest, error) {
-	return provider.FromStructuredObject(vs)
+	raw, err := json.Marshal(vs)
+	if err != nil {
+		return provider.Manifest{}, err
+	}
+
+	var m provider.Manifest
+	if err := m.UnmarshalJSON(raw); err != nil {
+		return provider.Manifest{}, err
+	}
+	return m, nil
 }
 
 // generateVirtualServiceManifest updates a VirtualService manifest with the given
